@@ -6,11 +6,12 @@ import numpy as np
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
 from src.loops.loop import Loop
+from src.metrics.metric import Metric
 
 
 class ValidationLoop(Loop):
-    def __init__(self, train_module: TrainModule, data_module: DataModule) -> None:
-        super().__init__(train_module, data_module)
+    def __init__(self, train_module: TrainModule, data_module: DataModule, metrics: dict[str, Metric]) -> None:
+        super().__init__(train_module, data_module, metrics)
 
     def on_validation_epoch_start(self):
         """Validation hook which triggers at the beginning of a validation epoch The essential bit
@@ -27,7 +28,8 @@ class ValidationLoop(Loop):
             self.train_module.on_validation_epoch_start()
         # TODO: Refactor this into callbacks
         self.accs = []
-        self.losses = []
+        for metric in self.metrics.values():
+            metric.reset()
 
     def on_validation_batch_start(self, batch: np.array, batch_idx: int) -> mx.array:
         """Validation hook which triggers at the start of a validation batch.
@@ -50,7 +52,7 @@ class ValidationLoop(Loop):
         if hasattr(self.train_module, "on_validation_batch_end"):
             self.train_module.on_validation_batch_start(loss, acc)
         self.accs.append(acc)
-        self.losses.append(loss)
+        self.metrics["loss"].update(loss)
 
     def validation_step(self, batch, batch_idx) -> tuple[mx.array, mx.array]:
         assert hasattr(self.train_module, "validation_step"), "The trainmodule has not validation_step defined"
@@ -67,7 +69,7 @@ class ValidationLoop(Loop):
             " | ".join(
                 (
                     f"Epoch {self.current_epoch:02d}",
-                    f"Validation loss: {mx.mean(mx.array(self.losses)).item():.3f}",
+                    f"Validation loss: {self.metrics['loss'].compute().item():.3f}",
                     f"Validation accuracy: {mx.mean(mx.array(self.accs)).item():.3f}",
                 )
             )

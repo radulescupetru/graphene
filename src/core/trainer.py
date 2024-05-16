@@ -10,6 +10,7 @@ from mlx import nn
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
 from src.loops.validation_loop import ValidationLoop
+from src.metrics.loss import LossMetric
 
 
 class Trainer:
@@ -28,8 +29,10 @@ class Trainer:
         self.run_validation_every_n_epochs = run_validation_every_n_epochs
         self.run_sanity_validation = run_sanity_validation
 
+        # Define system metrics
+        self.metrics = {"loss": LossMetric()}
         # Loops
-        self._validation_loop = ValidationLoop(train_module, data_module)
+        self._validation_loop = ValidationLoop(train_module, data_module, self.metrics)
 
     @property
     def current_epoch(self) -> int:
