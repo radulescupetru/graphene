@@ -7,7 +7,9 @@ import mlx.core as mx
 import numpy as np
 from mlx import nn
 
-from src.core import DataModule, TrainModule
+from src.core.datamodule import DataModule
+from src.core.trainmodule import TrainModule
+from src.loops.validation_loop import ValidationLoop
 
 
 class Trainer:
@@ -16,15 +18,18 @@ class Trainer:
         train_module: TrainModule,
         data_module: DataModule,
         max_epochs: int,
-        run_eval_every_n_epochs: int = 1,
-        run_sanity_validation: bool = False,
+        run_validation_every_n_epochs: int = 1,
+        run_sanity_validation: bool = True,
         **kwargs,
     ) -> None:
         self.train_module = train_module
         self.data_module = data_module
         self.max_epochs = max_epochs
-        self.run_eval_every_n_epochs = run_eval_every_n_epochs
+        self.run_validation_every_n_epochs = run_validation_every_n_epochs
         self.run_sanity_validation = run_sanity_validation
+
+        # Loops
+        self._validation_loop = ValidationLoop(train_module, data_module)
 
     @property
     def current_epoch(self) -> int:
@@ -35,6 +40,9 @@ class Trainer:
     @current_epoch.setter
     def current_epoch(self, current_epoch) -> None:
         self._current_epoch = current_epoch
+        # Set the current epoch in each loop
+        for loop in [self._validation_loop]:
+            loop.current_epoch = current_epoch
 
     def fit(self):
         # Configuration
@@ -46,10 +54,11 @@ class Trainer:
         for epoch_number in range(self.max_epochs):
             # Set the current epoch number
             self.current_epoch = epoch_number
-            if epoch_number % self.run_eval_every_n_epochs == 0 and (epoch_number != 0 or self.run_sanity_validation):
+            if epoch_number % self.run_validation_every_n_epochs == 0 and (
+                epoch_number != 0 or self.run_sanity_validation
+            ):
                 # Run eval loop
-                self.validation_loop(model, self.data_module.valid_dataloader())
-                self.data_module.valid_dataloader().reset()
+                self._validation_loop.iterate()
             # Run training loop
             self.train_loop(model, self.data_module.train_dataloader(), optimizer)
             self.data_module.train_dataloader().reset()
@@ -102,17 +111,3 @@ class Trainer:
                 )
             mx.eval(state)
         print(f"Epoch {self.current_epoch:02d} | Accuracy: {mx.mean(mx.array(accs)).item():.3f}")
-
-    def validation_loop(self, model: nn.Module, valid_dataloader):
-        model.train(False)
-        accs = []
-        for batch_index, batch in enumerate(valid_dataloader):
-            batch = {k: mx.array(v) for k, v in batch.items()}
-            loss, acc = self.train_module.validation_step(batch, batch_index)
-            print(
-                " | ".join(
-                    (f"Epoch {self.current_epoch:02d} [{batch_index:03d}]", f"Validation loss: {loss.item():.3f}")
-                )
-            )
-            accs.append(acc)
-        print(f"Epoch {self.current_epoch:02d} | Validation accuracy: {mx.mean(mx.array(accs)).item():.3f}")
