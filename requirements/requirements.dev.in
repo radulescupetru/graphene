@@ -1,0 +1,7 @@
+black>=23.7.0
+ruff>=0.0.282
+pre-commit>=3.3.0
+
+pip-tools
+pyright # static type checking (better than mypy)
+ruff-lsp # for using ruff in editors like emacs or vim

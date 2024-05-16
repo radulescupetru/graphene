@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=61", "setuptools_scm[toml]>=6.2", "packaging"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graphene-mlx"
+authors = [{ name = "Petru Radulescu", email = "petruradulescu.v@gmail.com" }]
+requires-python = ">=3.10"
+description = "Neural Network Trainer for MLX"
+license = { text = "Apache License, Version 2.0" }
+dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
+
+[tool.setuptools.dynamic]
+readme = { file = ["README.md"] }
+dependencies = { file = ["requirements/requirements.in"] }
+optional-dependencies.dev = { file = ["requirements/requirements.dev.in"] }
+
+[tool.setuptools_scm]
+fallback_version = "0.1.0"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["src"]
+exclude = ["data", "tests"]
+
+[tool.black]
+line-length = 119
+preview = true
+
+[tool.pytest]
+addopts = ["--cov=graphene", "--cov-report=term"]
+markers = ["slow: marks tests as slow"]
+
+[tool.pyright]
+include = ["src", "examples"]
+exclude = ["**/__pycache__", "**/wandb"]
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+
+[tool.ruff]
+line-length = 119
+target-version = "py310"
+builtins = ["_"]
+extend-exclude = ["data"]
+# Group violations by containing file.
+format = "grouped"
+# don't remove unused imports in __init__.py files. They should still be added to __all__ though, so ruff still warns about them
+ignore-init-module-imports = true
+
+# rules to enable.
+select = [
+  "E",    # pycodestyle
+  "F",    # Pyflakes
+  "UP",   # Use modern python idioms over outdated and deprecated ones
+  "I",    # Isort (ensuring imports are sorted and formatted at the top of files)
+  "A",    # flake8-builtins (don't assign to builtin variables / functions)
+  "B",    # flake8-bugbear (common python bugs like assigning to os.environ which does nothing)
+  "SIM",  # rules to catch code that can automatically be simplified (e.g. multiple isinstance calls instead of one)
+  "COM",  # rules to catch unnecessary comprehensions or generators and simplify them
+  "PLR",  # pylint refactoring rules
+  "RUF",  # Ruff's homegrown rules. Includes f-string type conversion, mutable-dataclass checks and more.
+  "PTH",  # Use Pathlib.Path instead of os.
+  "PERF", # Common performance pitfalls.
+]
+
+# specific subrules to ignore
+extend-ignore = [
+  "COM812", # dont require a trailing comma at the end of a multi-line list.
+  "A003",   # Class attributes can't shadow builtins. This is a footgun that's hard to shoot.
+  "B010",   # setattr with constant is just as safe as normal. However, pyright and mypy disagree and throw a type error.
+  "B028",   # stacklevel is something that should be set in most cases, but we are careful about our stacktraces
+]
+
+[tool.ruff.extend-per-file-ignores]
+"__init__.py" = ["I002"]
+
+[tool.ruff.pylint]
+max-args = 10
+# allow magic values of specific types.
+allow-magic-value-types = ["str", "bytes", "int", "float"]
+
+[tool.ruff.isort]
+known-first-party = ["core", "examples"]
+# It's unclear why, but ruff on some machines was considering wandb to be a
+# first party package. This caused differences between local and CI lint checks.
+known-third-party = ["wandb"]
+required-imports = ["from __future__ import annotations"]
+force-wrap-aliases = true
+combine-as-imports = true
