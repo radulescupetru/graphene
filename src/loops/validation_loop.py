@@ -6,12 +6,17 @@ import numpy as np
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
 from src.loops.loop import Loop
+from src.metrics.loss import LossMetric
 from src.metrics.metric import Metric
 
 
 class ValidationLoop(Loop):
-    def __init__(self, train_module: TrainModule, data_module: DataModule, metrics: dict[str, Metric]) -> None:
-        super().__init__(train_module, data_module, metrics)
+    def __init__(self, train_module: TrainModule, data_module: DataModule) -> None:
+        super().__init__(train_module, data_module)
+        self.metrics: dict[str, Metric] = {"loss": LossMetric()}
+
+    def log(self, name, value):
+        self.metrics[name] = value
 
     def on_validation_epoch_start(self):
         """Validation hook which triggers at the beginning of a validation epoch The essential bit
@@ -26,8 +31,6 @@ class ValidationLoop(Loop):
         # Call user defined method
         if hasattr(self.train_module, "on_validation_epoch_start"):
             self.train_module.on_validation_epoch_start()
-        # TODO: Refactor this into callbacks
-        self.accs = []
         for metric in self.metrics.values():
             metric.reset()
 
@@ -47,17 +50,16 @@ class ValidationLoop(Loop):
         batch = {k: mx.array(v) for k, v in batch.items()}
         return batch
 
-    def on_validation_batch_end(self, loss, acc):
+    def on_validation_batch_end(self, loss):
         # Call user defined method
         if hasattr(self.train_module, "on_validation_batch_end"):
-            self.train_module.on_validation_batch_start(loss, acc)
-        self.accs.append(acc)
+            self.train_module.on_validation_batch_start(loss)
         self.metrics["loss"].update(loss)
 
     def validation_step(self, batch, batch_idx) -> tuple[mx.array, mx.array]:
         assert hasattr(self.train_module, "validation_step"), "The trainmodule has not validation_step defined"
-        loss, acc = self.train_module.validation_step(batch, batch_idx)
-        return loss, acc
+        loss = self.train_module.validation_step(batch, batch_idx)
+        return loss
 
     def on_validation_epoch_end(self):
         # Call user defined method
@@ -70,7 +72,7 @@ class ValidationLoop(Loop):
                 (
                     f"Epoch {self.current_epoch:02d}",
                     f"Validation loss: {self.metrics['loss'].compute().item():.3f}",
-                    f"Validation accuracy: {mx.mean(mx.array(self.accs)).item():.3f}",
+                    f"Validation accuracy: {self.metrics['validation_accuracy'].compute().item():.3f}",
                 )
             )
         )
@@ -79,6 +81,6 @@ class ValidationLoop(Loop):
         self.on_validation_epoch_start()
         for batch_idx, batch in enumerate(self.data_module.valid_dataloader()):
             batch = self.on_validation_batch_start(batch, batch_idx)
-            loss, acc = self.validation_step(batch, batch_idx)
-            self.on_validation_batch_end(loss, acc)
+            loss = self.validation_step(batch, batch_idx)
+            self.on_validation_batch_end(loss)
         self.on_validation_epoch_end()

@@ -1,22 +1,26 @@
 from __future__ import annotations
 
+import enum
 from abc import ABC, abstractmethod
 
 from mlx import nn
 
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
-from src.metrics.metric import Metric
+
+
+class LoopType(enum.Enum):
+    TRAINING = enum.auto()
+    VALIDATION = enum.auto()
 
 
 class Loop(ABC):
     """Base class for loops."""
 
-    def __init__(self, train_module: TrainModule, data_module: DataModule, metrics: dict[str, Metric]) -> None:
+    def __init__(self, train_module: TrainModule, data_module: DataModule) -> None:
         super().__init__()
         self.train_module = train_module
         self.data_module = data_module
-        self.metrics = metrics
 
     def setup(self):
         """Method which makes sure both the train module and the data modules are properly

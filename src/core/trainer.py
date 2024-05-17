@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import contextmanager
 from functools import partial
 
 import mlx.core as mx
@@ -9,8 +10,8 @@ from mlx import nn
 
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
+from src.loops.loop import LoopType
 from src.loops.validation_loop import ValidationLoop
-from src.metrics.loss import LossMetric
 
 
 class Trainer:
@@ -24,15 +25,15 @@ class Trainer:
         **kwargs,
     ) -> None:
         self.train_module = train_module
+        # Set reference to the trainer inside the train module
+        self.train_module.trainer = self
         self.data_module = data_module
         self.max_epochs = max_epochs
         self.run_validation_every_n_epochs = run_validation_every_n_epochs
         self.run_sanity_validation = run_sanity_validation
 
-        # Define system metrics
-        self.metrics = {"loss": LossMetric()}
         # Loops
-        self._validation_loop = ValidationLoop(train_module, data_module, self.metrics)
+        self.loops = {LoopType.VALIDATION: ValidationLoop(train_module, data_module)}
 
     @property
     def current_epoch(self) -> int:
@@ -44,8 +45,33 @@ class Trainer:
     def current_epoch(self, current_epoch) -> None:
         self._current_epoch = current_epoch
         # Set the current epoch in each loop
-        for loop in [self._validation_loop]:
+        for loop in self.loops.values():
             loop.current_epoch = current_epoch
+
+    @property
+    def active_loop(self) -> LoopType:
+        return self._active_loop
+
+    @active_loop.setter
+    def active_loop(self, active_loop: LoopType):
+        self._active_loop = active_loop
+
+    @contextmanager
+    def loop_context(self, loop_type: LoopType):
+        """Context manager to set the active loop type.
+
+        Args:
+            loop_type: The type of the active loop
+        """
+        self.active_loop = loop_type
+        try:
+            yield
+        finally:
+            self.active_loop = LoopType.TRAINING
+
+    def log(self, name, value):
+        active_loop = self.loops[self.active_loop]
+        active_loop.log(name, value)
 
     def fit(self):
         # Configuration
@@ -60,11 +86,13 @@ class Trainer:
             if epoch_number % self.run_validation_every_n_epochs == 0 and (
                 epoch_number != 0 or self.run_sanity_validation
             ):
-                # Run eval loop
-                self._validation_loop.iterate()
+                with self.loop_context(LoopType.VALIDATION):
+                    # Run eval loop
+                    self.loops[self.active_loop].iterate()
             # Run training loop
-            self.train_loop(model, self.data_module.train_dataloader(), optimizer)
-            self.data_module.train_dataloader().reset()
+            with self.loop_context(LoopType.TRAINING):
+                self.train_loop(model, self.data_module.train_dataloader(), optimizer)
+                self.data_module.train_dataloader().reset()
 
     def train_loop(self, model: nn.Module, train_dataloader, optimizer):
         """Training loop.

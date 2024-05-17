@@ -13,6 +13,14 @@ class TrainModule(ABC):
         self.args = args
 
     @property
+    def trainer(self):
+        return self._trainer
+
+    @trainer.setter
+    def trainer(self, trainer):
+        self._trainer = trainer
+
+    @property
     def model(self):
         return self._model
 
@@ -25,6 +33,9 @@ class TrainModule(ABC):
     @model.setter
     def model(self, model):
         self._model = model
+
+    def log(self, name, value):
+        self.trainer.log(name, value)
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
         r"""Same as :meth:`torch.nn.Module.forward`.

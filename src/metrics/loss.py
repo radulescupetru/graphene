@@ -10,6 +10,9 @@ class LossMetric(Metric):
         super().__init__()
         self.add_state("losses", default=mx.array([]), reduce_fx=mx.mean)
 
+    def __call__(self, loss: mx.array) -> None:
+        self.update(loss)
+
     def update(self, loss: mx.array):
         self.losses = mx.concatenate([self.losses, mx.expand_dims(loss, 0)])
 
