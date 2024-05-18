@@ -11,7 +11,7 @@ from examples.cifar_datamodule import Cifar10DataModule
 from examples.resnet import resnet20
 from src.core.trainer import Trainer
 from src.core.trainmodule import TrainModule
-from src.metrics.loss import LossMetric
+from src.metrics import Accuracy
 
 
 class CifarTrainModule(TrainModule):
@@ -27,8 +27,7 @@ class CifarTrainModule(TrainModule):
 
     def setup(self):
         self.accs = []
-        # TODO: Add proper metric
-        self.validation_accuracy = LossMetric()
+        self.validation_accuracy = Accuracy()
 
     def training_step(self, batch: dict, batch_idx):
         x, y = batch["image"], batch["label"]
@@ -41,7 +40,7 @@ class CifarTrainModule(TrainModule):
         x, y = batch["image"], batch["label"]
         y_hat = self.forward(x)
         loss = nn.losses.cross_entropy(y_hat, y, reduction="mean")
-        self.validation_accuracy(mx.mean(mx.argmax(y_hat, axis=1) == y))
+        self.validation_accuracy(y_hat, y)
         self.log("validation_accuracy", self.validation_accuracy)
         return loss
 

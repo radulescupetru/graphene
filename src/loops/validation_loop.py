@@ -6,19 +6,19 @@ import numpy as np
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
 from src.loops.loop import Loop
-from src.metrics.loss import LossMetric
+from src.metrics import Accumulation
 from src.metrics.metric import Metric
 
 
 class ValidationLoop(Loop):
     def __init__(self, train_module: TrainModule, data_module: DataModule) -> None:
         super().__init__(train_module, data_module)
-        self.metrics: dict[str, Metric] = {"loss": LossMetric()}
+        self.metrics: dict[str, Metric] = {"loss": Accumulation()}
 
     def log(self, name, value):
         self.metrics[name] = value
 
-    def on_validation_epoch_start(self):
+    def on_validation_epoch_start(self, *args, **kwargs):
         """Validation hook which triggers at the beginning of a validation epoch The essential bit
         is setting the model in validation mode.
 
@@ -30,7 +30,7 @@ class ValidationLoop(Loop):
         self.model.train(False)
         # Call user defined method
         if hasattr(self.train_module, "on_validation_epoch_start"):
-            self.train_module.on_validation_epoch_start()
+            self.train_module.on_validation_epoch_start(args, kwargs)
         for metric in self.metrics.values():
             metric.reset()
 
@@ -61,10 +61,10 @@ class ValidationLoop(Loop):
         loss = self.train_module.validation_step(batch, batch_idx)
         return loss
 
-    def on_validation_epoch_end(self):
+    def on_validation_epoch_end(self, *args, **kwargs):
         # Call user defined method
         if hasattr(self.train_module, "on_validation_epoch_end"):
-            self.train_module.on_validation_epoch_end()
+            self.train_module.on_validation_epoch_end(args, kwargs)
         # Reset the data stream
         self.data_module.valid_dataloader().reset()
         print(
@@ -72,7 +72,7 @@ class ValidationLoop(Loop):
                 (
                     f"Epoch {self.current_epoch:02d}",
                     f"Validation loss: {self.metrics['loss'].compute().item():.3f}",
-                    f"Validation accuracy: {self.metrics['validation_accuracy'].compute().item():.3f}",
+                    f"Validation accuracy: {self.metrics['validation_accuracy'].compute():.3f}",
                 )
             )
         )
