@@ -8,6 +8,7 @@ import mlx.core as mx
 import numpy as np
 from mlx import nn
 
+from src.callbacks.model_summary import ModelSummary
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
 from src.loops.loop import LoopType
@@ -31,9 +32,21 @@ class Trainer:
         self.max_epochs = max_epochs
         self.run_validation_every_n_epochs = run_validation_every_n_epochs
         self.run_sanity_validation = run_sanity_validation
+        self.model = train_module.model
+
+        # Callbacks
+        self.callbacks = [ModelSummary()]
 
         # Loops
-        self.loops = {LoopType.VALIDATION: ValidationLoop(train_module, data_module)}
+        self.loops = {LoopType.VALIDATION: ValidationLoop(self, train_module, data_module)}
+
+    @property
+    def model(self) -> nn.Module:
+        return self._model
+
+    @model.setter
+    def model(self, model):
+        self._model = model
 
     @property
     def current_epoch(self) -> int:
@@ -73,12 +86,21 @@ class Trainer:
         active_loop = self.loops[self.active_loop]
         active_loop.log(name, value)
 
+    def register_callback(self, callback):
+        self.callbacks.append(callback)
+
+    def _trigger_event(self, event):
+        for callback in self.callbacks:
+            if hasattr(callback, event):
+                getattr(callback, event)(self)
+
     def fit(self):
         # Configuration
         optimizer = self.train_module.configure_optimizers()
         model = self.train_module.model
         self.data_module.setup()
         self.train_module.setup()
+        self._trigger_event("on_fit_start")
         # Loops
         for epoch_number in range(self.max_epochs):
             # Set the current epoch number

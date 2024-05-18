@@ -17,10 +17,11 @@ class LoopType(enum.Enum):
 class Loop(ABC):
     """Base class for loops."""
 
-    def __init__(self, train_module: TrainModule, data_module: DataModule) -> None:
+    def __init__(self, trainer, train_module: TrainModule, data_module: DataModule) -> None:
         super().__init__()
         self.train_module = train_module
         self.data_module = data_module
+        self.trainer = trainer
 
     def setup(self):
         """Method which makes sure both the train module and the data modules are properly

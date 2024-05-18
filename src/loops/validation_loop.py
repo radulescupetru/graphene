@@ -11,8 +11,8 @@ from src.metrics.metric import Metric
 
 
 class ValidationLoop(Loop):
-    def __init__(self, train_module: TrainModule, data_module: DataModule) -> None:
-        super().__init__(train_module, data_module)
+    def __init__(self, trainer, train_module: TrainModule, data_module: DataModule) -> None:
+        super().__init__(trainer, train_module, data_module)
         self.metrics: dict[str, Metric] = {"loss": Accumulation()}
 
     def log(self, name, value):
@@ -78,9 +78,14 @@ class ValidationLoop(Loop):
         )
 
     def iterate(self):
+        self.trainer._trigger_event("on_validation_epoch_start")
         self.on_validation_epoch_start()
         for batch_idx, batch in enumerate(self.data_module.valid_dataloader()):
+            self.trainer._trigger_event("on_validation_batch_start")
             batch = self.on_validation_batch_start(batch, batch_idx)
             loss = self.validation_step(batch, batch_idx)
+            self.trainer._trigger_event("validation_step")
             self.on_validation_batch_end(loss)
+            self.trainer._trigger_event("on_validation_batch_end")
         self.on_validation_epoch_end()
+        self.trainer._trigger_event("on_validation_epoch_end")
