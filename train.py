@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
-import mlx.core as mx
 import mlx.optimizers as optim
 from mlx import nn
 
@@ -28,13 +27,15 @@ class CifarTrainModule(TrainModule):
     def setup(self):
         self.accs = []
         self.validation_accuracy = Accuracy()
+        self.train_accuracy = Accuracy()
 
     def training_step(self, batch: dict, batch_idx):
         x, y = batch["image"], batch["label"]
         y_hat = self.forward(x)
         loss = nn.losses.cross_entropy(y_hat, y, reduction="mean")
-        acc = mx.mean(mx.argmax(y_hat, axis=1) == y)
-        return loss, acc
+        self.train_accuracy(y_hat, y)
+        self.log("train_accuracy", self.train_accuracy)
+        return loss
 
     def validation_step(self, batch: dict, batch_idx):
         x, y = batch["image"], batch["label"]

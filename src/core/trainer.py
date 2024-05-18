@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from contextlib import contextmanager
-from functools import partial
 
-import mlx.core as mx
-import numpy as np
 from mlx import nn
 
 from src.callbacks.model_summary import ModelSummary
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
 from src.loops.loop import LoopType
+from src.loops.train_loop import TrainLoop
 from src.loops.validation_loop import ValidationLoop
 
 
@@ -26,20 +23,26 @@ class Trainer:
         **kwargs,
     ) -> None:
         self.train_module = train_module
-        # Set reference to the trainer inside the train module
-        self.train_module.trainer = self
+        self.train_module.trainer = self  # Set reference to the trainer inside the train module
         self.data_module = data_module
         self.max_epochs = max_epochs
         self.run_validation_every_n_epochs = run_validation_every_n_epochs
         self.run_sanity_validation = run_sanity_validation
-        self.model = train_module.model
 
-        # Callbacks
+        # Initialize model and optimizer
+        self.model = train_module.model
+        self.optimizer = self.train_module.configure_optimizers()
+
+        # Initialize callbacks
         self.callbacks = [ModelSummary()]
 
-        # Loops
-        self.loops = {LoopType.VALIDATION: ValidationLoop(self, train_module, data_module)}
+        # Initialize loops
+        self.loops = {
+            LoopType.VALIDATION: ValidationLoop(self, train_module, data_module),
+            LoopType.TRAINING: TrainLoop(self, train_module, data_module),
+        }
 
+    # Property for model
     @property
     def model(self) -> nn.Module:
         return self._model
@@ -48,6 +51,7 @@ class Trainer:
     def model(self, model):
         self._model = model
 
+    # Property for current epoch
     @property
     def current_epoch(self) -> int:
         if not hasattr(self, "_current_epoch"):
@@ -61,6 +65,7 @@ class Trainer:
         for loop in self.loops.values():
             loop.current_epoch = current_epoch
 
+    # Property for active loop
     @property
     def active_loop(self) -> LoopType:
         return self._active_loop
@@ -69,13 +74,18 @@ class Trainer:
     def active_loop(self, active_loop: LoopType):
         self._active_loop = active_loop
 
+    # Property for optimizer
+    @property
+    def optimizer(self):
+        return self._optimizer
+
+    @optimizer.setter
+    def optimizer(self, optimizer):
+        self._optimizer = optimizer
+
     @contextmanager
     def loop_context(self, loop_type: LoopType):
-        """Context manager to set the active loop type.
-
-        Args:
-            loop_type: The type of the active loop
-        """
+        """Context manager to set the active loop type."""
         self.active_loop = loop_type
         try:
             yield
@@ -83,84 +93,63 @@ class Trainer:
             self.active_loop = LoopType.TRAINING
 
     def log(self, name, value):
+        """Logs a value during the active loop."""
         active_loop = self.loops[self.active_loop]
         active_loop.log(name, value)
 
     def register_callback(self, callback):
+        """Registers a new callback."""
         self.callbacks.append(callback)
 
     def _trigger_event(self, event):
+        """Triggers a specific event for all registered callbacks."""
         for callback in self.callbacks:
             if hasattr(callback, event):
                 getattr(callback, event)(self)
 
     def fit(self):
-        # Configuration
-        optimizer = self.train_module.configure_optimizers()
-        model = self.train_module.model
+        """Runs the fit process for the given number of epochs.
+
+        Handles setup, sanity validation, training, and validation loops.
+        """
+        self._setup()
+        self._trigger_event("on_fit_start")
+
+        for epoch_number in range(self.max_epochs):
+            self.current_epoch = epoch_number
+
+            if self._should_run_sanity_validation():
+                self._run_sanity_validation()
+
+            self._run_training_loop()
+
+            if self._should_run_validation():
+                self._run_validation_loop()
+
+    def _setup(self):
+        """Configures the data and training modules."""
         self.data_module.setup()
         self.train_module.setup()
-        self._trigger_event("on_fit_start")
-        # Loops
-        for epoch_number in range(self.max_epochs):
-            # Set the current epoch number
-            self.current_epoch = epoch_number
-            if epoch_number % self.run_validation_every_n_epochs == 0 and (
-                epoch_number != 0 or self.run_sanity_validation
-            ):
-                with self.loop_context(LoopType.VALIDATION):
-                    # Run eval loop
-                    self.loops[self.active_loop].iterate()
-            # Run training loop
-            with self.loop_context(LoopType.TRAINING):
-                self.train_loop(model, self.data_module.train_dataloader(), optimizer)
-                self.data_module.train_dataloader().reset()
 
-    def train_loop(self, model: nn.Module, train_dataloader, optimizer):
-        """Training loop.
+    def _should_run_sanity_validation(self):
+        """Determines if sanity validation should run."""
+        return self.run_sanity_validation and self.current_epoch == 0
 
-        Args:
-            model: Model to train.
-            train_dataloader: Dataloader to train on.
-            optimizer: Optimizer to use.
-        """
-        # Set the model in training mode
-        model.train(True)
-        # Define the state
-        state = [model.state, optimizer.state]
-        # Set the user defined training step callable
-        training_step_fun: Callable = self.train_module.training_step
-        accs = []
+    def _run_sanity_validation(self):
+        """Runs the sanity validation loop."""
+        with self.loop_context(LoopType.VALIDATION):
+            self.loops[LoopType.VALIDATION].iterate()
 
-        @partial(mx.compile, inputs=state, outputs=state)
-        def step(batch: dict[str, np.array], batch_idx: int) -> tuple[mx.array, mx.array]:
-            """Perform a training step.
+    def _run_training_loop(self):
+        """Runs the training loop for the current epoch."""
+        with self.loop_context(LoopType.TRAINING):
+            self.loops[LoopType.TRAINING].iterate()
 
-            Args:
-                batch (np.array): Batch of data
-                batch_idx (int): Batch index
+    def _should_run_validation(self):
+        """Determines if validation should run this epoch."""
+        return self.current_epoch % self.run_validation_every_n_epochs == 0
 
-            Returns:
-                tuple[mx.array, mx.array]: Tuple with loss and grads
-            """
-            # Modify the training step function to return grads
-            training_step_fun_with_grad = nn.value_and_grad(model, training_step_fun)
-            # Call the training step from the trainmodule
-            (loss, acc), grads = training_step_fun_with_grad(batch, batch_idx)
-            # Return the loss and grads
-            return (loss, acc), grads
-
-        for batch_index, batch in enumerate(train_dataloader):
-            # Cast the numpy arrays in each batch to mx arrays
-            batch = {k: mx.array(v) for k, v in batch.items()}
-            (loss, acc), grads = step(batch, batch_index)
-            accs.append(acc)
-            optimizer.update(model, grads)
-            if batch_index % 10 == 0:
-                print(
-                    " | ".join(
-                        (f"Epoch {self.current_epoch:02d} [{batch_index:03d}]", f"Train loss: {loss.item():.3f}")
-                    )
-                )
-            mx.eval(state)
-        print(f"Epoch {self.current_epoch:02d} | Accuracy: {mx.mean(mx.array(accs)).item():.3f}")
+    def _run_validation_loop(self):
+        """Runs the validation loop for the current epoch."""
+        with self.loop_context(LoopType.VALIDATION):
+            self.loops[LoopType.VALIDATION].iterate()

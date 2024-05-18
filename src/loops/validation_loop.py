@@ -15,58 +15,97 @@ class ValidationLoop(Loop):
         super().__init__(trainer, train_module, data_module)
         self.metrics: dict[str, Metric] = {"loss": Accumulation()}
 
-    def log(self, name, value):
-        self.metrics[name] = value
-
     def on_validation_epoch_start(self, *args, **kwargs):
-        """Validation hook which triggers at the beginning of a validation epoch The essential bit
-        is setting the model in validation mode.
+        """Validation hook which triggers at the beginning of a validation epoch.
 
-        Additionally it:
-            - calls the user defined method with the same signature.
-            - calls the system and user defined callbacks methods with the same signature.
+        - Sets the model to validation mode.
+        - Calls user-defined methods and resets metrics.
         """
-        # Set the model to val mode at the start of the validation epoch
         self.model.train(False)
-        # Call user defined method
-        if hasattr(self.train_module, "on_validation_epoch_start"):
-            self.train_module.on_validation_epoch_start(args, kwargs)
-        for metric in self.metrics.values():
-            metric.reset()
+        self._call_user_method("on_validation_epoch_start", args, kwargs)
+        self._reset_metrics()
 
     def on_validation_batch_start(self, batch: np.array, batch_idx: int) -> mx.array:
         """Validation hook which triggers at the start of a validation batch.
 
+        - Converts the batch to mx.array format.
+        - Calls user-defined methods.
+
         Args:
-            batch : A batch of data
-            batch_idx: Index of the batch
+            batch : A batch of data.
+            batch_idx: Index of the batch.
 
         Returns:
-            batch: Batch formatted as a mx.array on top of additional user defined transformations.
+            batch: Batch formatted as mx.array with additional user-defined transformations.
         """
-        # Call user defined method
-        if hasattr(self.train_module, "on_validation_batch_start"):
-            batch = self.train_module.on_validation_batch_start(batch, batch_idx)
+        batch = self._call_user_method("on_validation_batch_start", batch, batch_idx)
         batch = {k: mx.array(v) for k, v in batch.items()}
         return batch
 
     def on_validation_batch_end(self, loss):
-        # Call user defined method
-        if hasattr(self.train_module, "on_validation_batch_end"):
-            self.train_module.on_validation_batch_start(loss)
+        """Validation hook which triggers at the end of a validation batch.
+
+        - Calls user-defined methods.
+        - Updates the loss metric.
+        """
+        self._call_user_method("on_validation_batch_end", loss)
         self.metrics["loss"].update(loss)
 
     def validation_step(self, batch, batch_idx) -> tuple[mx.array, mx.array]:
-        assert hasattr(self.train_module, "validation_step"), "The trainmodule has not validation_step defined"
+        """Executes a validation step, computing loss.
+
+        Args:
+            batch: A batch of data.
+            batch_idx: Index of the batch.
+
+        Returns:
+            Tuple containing the loss.
+        """
+        assert hasattr(self.train_module, "validation_step"), "The train module has no validation_step defined"
         loss = self.train_module.validation_step(batch, batch_idx)
         return loss
 
     def on_validation_epoch_end(self, *args, **kwargs):
-        # Call user defined method
-        if hasattr(self.train_module, "on_validation_epoch_end"):
-            self.train_module.on_validation_epoch_end(args, kwargs)
-        # Reset the data stream
+        """Validation hook which triggers at the end of a validation epoch.
+
+        - Calls user-defined methods.
+        - Resets the data loader.
+        - Logs the validation metrics.
+        """
+        self._call_user_method("on_validation_epoch_end", args, kwargs)
         self.data_module.valid_dataloader().reset()
+        self._log_epoch_metrics()
+
+    def iterate(self):
+        """Main loop iteration for validation.
+
+        - Triggers events and hooks at the start and end of each epoch and batch.
+        - Executes the validation step for each batch.
+        """
+        epoch_events = {
+            "start_event": "on_validation_epoch_start",
+            "end_event": "on_validation_epoch_end",
+            "start_method": self.on_validation_epoch_start,
+            "end_method": self.on_validation_epoch_end,
+        }
+
+        batch_events = {
+            "start_event": "on_validation_batch_start",
+            "end_event": "on_validation_batch_end",
+            "step_event": "validation_step",
+            "start_method": self.on_validation_batch_start,
+            "end_method": self.on_validation_batch_end,
+        }
+
+        self._execute_with_events(
+            epoch_events=epoch_events,
+            batch_events=batch_events,
+            batch_iterator=self.data_module.valid_dataloader(),
+            step_method=self.validation_step,
+        )
+
+    def _log_epoch_metrics(self):
+        """Logs the metrics at the end of an epoch."""
         print(
             " | ".join(
                 (
@@ -76,16 +115,3 @@ class ValidationLoop(Loop):
                 )
             )
         )
-
-    def iterate(self):
-        self.trainer._trigger_event("on_validation_epoch_start")
-        self.on_validation_epoch_start()
-        for batch_idx, batch in enumerate(self.data_module.valid_dataloader()):
-            self.trainer._trigger_event("on_validation_batch_start")
-            batch = self.on_validation_batch_start(batch, batch_idx)
-            loss = self.validation_step(batch, batch_idx)
-            self.trainer._trigger_event("validation_step")
-            self.on_validation_batch_end(loss)
-            self.trainer._trigger_event("on_validation_batch_end")
-        self.on_validation_epoch_end()
-        self.trainer._trigger_event("on_validation_epoch_end")
