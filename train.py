@@ -19,7 +19,11 @@ class CifarTrainModule(TrainModule):
         self.model = resnet20()
 
     def configure_optimizers(self):
-        return optim.Adam(learning_rate=1e-3)
+        warmup = optim.linear_schedule(0, 1e-1, steps=30 * 190)
+        cosine = optim.cosine_decay(1e-1, 200)
+        lr_schedule = optim.join_schedules([warmup, cosine], [30 * 190])
+        optimizer = optim.Adam(learning_rate=lr_schedule)
+        return optimizer
 
     def forward(self, x) -> Any:
         return self.model(x)
