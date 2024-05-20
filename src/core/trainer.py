@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
+import mlx.core as mx
 from mlx import nn
 
 from src.callbacks.model_summary import ModelSummary
@@ -21,6 +22,7 @@ class Trainer:
         max_epochs: int,
         run_validation_every_n_epochs: int = 1,
         run_sanity_validation: bool = True,
+        seed: int = 42,
         **kwargs,
     ) -> None:
         self.train_module = train_module
@@ -29,6 +31,7 @@ class Trainer:
         self.max_epochs = max_epochs
         self.run_validation_every_n_epochs = run_validation_every_n_epochs
         self.run_sanity_validation = run_sanity_validation
+        self.seed = seed
 
         # Initialize model and optimizer
         self.model = train_module.model
@@ -129,6 +132,7 @@ class Trainer:
 
     def _setup(self):
         """Configures the data and training modules."""
+        mx.random.seed(self.seed)
         self.data_module.setup()
         self.train_module.setup()
 
