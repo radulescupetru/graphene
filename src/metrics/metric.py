@@ -8,11 +8,13 @@ import mlx.core as mx
 
 
 class Metric(ABC):
-    def __init__(self, name) -> None:
+    def __init__(self, name, on_step: bool = True, on_epoch: bool = True) -> None:
         super().__init__()
         self.name = name
         self._allowed_reduce_fx = [mx.mean, mx.sum, mx.concatenate]
         self.reduce_fx: Callable = mx.mean
+        self.on_step = on_step
+        self.on_epoch = on_epoch
         self._defaults: dict[str, Any] = {}
 
     def add_state(self, name: str, default: mx.array, reduce_fx: Callable) -> None:

@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from mlx import nn
 
 from src.callbacks.model_summary import ModelSummary
+from src.callbacks.progress_bar import ProgressCallback
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
 from src.loops.loop import LoopType
@@ -34,7 +35,7 @@ class Trainer:
         self.optimizer = self.train_module.configure_optimizers()
 
         # Initialize callbacks
-        self.callbacks = [ModelSummary()]
+        self.callbacks = [ModelSummary(), ProgressCallback()]
 
         # Initialize loops
         self.loops = {

@@ -50,6 +50,7 @@ class ValidationLoop(Loop):
         """
         self._call_user_method("on_validation_batch_end", loss)
         self.metrics["loss"].update(loss)
+        self.log("loss", self.metrics["loss"])
 
     def validation_step(self, batch, batch_idx) -> tuple[mx.array, mx.array]:
         """Executes a validation step, computing loss.
@@ -74,7 +75,6 @@ class ValidationLoop(Loop):
         """
         self._call_user_method("on_validation_epoch_end", args, kwargs)
         self.data_module.valid_dataloader().reset()
-        self._log_epoch_metrics()
 
     def iterate(self):
         """Main loop iteration for validation.
@@ -102,16 +102,4 @@ class ValidationLoop(Loop):
             batch_events=batch_events,
             batch_iterator=self.data_module.valid_dataloader(),
             step_method=self.validation_step,
-        )
-
-    def _log_epoch_metrics(self):
-        """Logs the metrics at the end of an epoch."""
-        print(
-            " | ".join(
-                (
-                    f"Epoch {self.current_epoch:02d}",
-                    f"Validation loss: {self.metrics['loss'].compute().item():.3f}",
-                    f"Validation accuracy: {self.metrics['validation_accuracy'].compute():.3f}",
-                )
-            )
         )

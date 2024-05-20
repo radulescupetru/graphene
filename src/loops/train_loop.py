@@ -54,6 +54,7 @@ class TrainLoop(Loop):
         self._call_user_method("on_train_batch_end", loss)
         mx.eval(self.state)
         self.metrics["loss"].update(loss)
+        self.log("loss", self.metrics["loss"])
 
     def training_step(self, batch, batch_idx) -> tuple[mx.array, mx.array]:
         """Executes a training step, computing loss and gradients.
@@ -79,7 +80,6 @@ class TrainLoop(Loop):
         """
         self._call_user_method("on_train_epoch_end", args, kwargs)
         self.data_module.train_dataloader().reset()
-        self._log_epoch_metrics()
 
     def iterate(self):
         """Main loop iteration for training.
@@ -107,16 +107,4 @@ class TrainLoop(Loop):
             batch_events=batch_events,
             batch_iterator=self.data_module.train_dataloader(),
             step_method=self.training_step,
-        )
-
-    def _log_epoch_metrics(self):
-        """Logs the metrics at the end of an epoch."""
-        print(
-            " | ".join(
-                (
-                    f"Epoch {self.current_epoch:02d}",
-                    f"Training loss: {self.metrics['loss'].compute().item():.3f}",
-                    f"Training accuracy: {self.metrics['train_accuracy'].compute():.3f}",
-                )
-            )
         )

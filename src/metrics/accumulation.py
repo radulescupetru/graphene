@@ -14,4 +14,4 @@ class Accumulation(Metric):
         self.quantity = mx.concatenate([self.quantity, mx.expand_dims(quantity, 0)])
 
     def compute(self) -> mx.array:
-        return self.reduce_fx(self.quantity)
+        return self.reduce_fx(self.quantity).item()
