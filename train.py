@@ -49,5 +49,12 @@ class CifarTrainModule(TrainModule):
 if __name__ == "__main__":
     datamodule = Cifar10DataModule(args=SimpleNamespace(batch_size=256))
     trainmodule = CifarTrainModule(args=None)
-    trainer = Trainer(train_module=trainmodule, data_module=datamodule, max_epochs=30, run_validation_every_n_epochs=1)
+    trainer = Trainer(
+        train_module=trainmodule,
+        data_module=datamodule,
+        max_epochs=30,
+        run_validation_every_n_epochs=1,
+        limit_validation_batches=10,
+        limit_train_batches=10,
+    )
     trainer.fit()

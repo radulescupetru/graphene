@@ -81,8 +81,15 @@ class Loop(ABC):
         # Trigger start of epoch events and methods
         self.trainer._trigger_event(epoch_events["start_event"])
         epoch_events["start_method"]()
+        stopping_criteria = (
+            self.trainer.limit_train_batches
+            if self.trainer.active_loop == LoopType.TRAINING
+            else self.trainer.limit_validation_batches
+        )
 
         for batch_idx, batch in enumerate(batch_iterator):
+            if stopping_criteria is not None and batch_idx >= stopping_criteria:
+                break
             # Trigger start of batch events and methods
             self.trainer._trigger_event(batch_events["start_event"])
             batch = batch_events["start_method"](batch, batch_idx)

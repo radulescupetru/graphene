@@ -22,6 +22,8 @@ class Trainer:
         max_epochs: int,
         run_validation_every_n_epochs: int = 1,
         run_sanity_validation: bool = True,
+        limit_train_batches: int | None = None,
+        limit_validation_batches: int | None = None,
         seed: int = 42,
         **kwargs,
     ) -> None:
@@ -31,6 +33,8 @@ class Trainer:
         self.max_epochs = max_epochs
         self.run_validation_every_n_epochs = run_validation_every_n_epochs
         self.run_sanity_validation = run_sanity_validation
+        self.limit_train_batches = limit_train_batches
+        self.limit_validation_batches = limit_validation_batches
         self.seed = seed
 
         # Initialize model and optimizer
@@ -38,7 +42,10 @@ class Trainer:
         self.optimizer = self.train_module.configure_optimizers()
 
         # Initialize callbacks
-        self.callbacks = [ModelSummary(), ProgressCallback()]
+        self.callbacks = [
+            ModelSummary(),
+            ProgressCallback(),
+        ]
 
         # Initialize loops
         self.loops = {
@@ -105,11 +112,11 @@ class Trainer:
         """Registers a new callback."""
         self.callbacks.append(callback)
 
-    def _trigger_event(self, event):
+    def _trigger_event(self, event, *args, **kwargs):
         """Triggers a specific event for all registered callbacks."""
         for callback in self.callbacks:
             if hasattr(callback, event):
-                getattr(callback, event)(self)
+                getattr(callback, event)(self, *args, **kwargs)
 
     def fit(self):
         """Runs the fit process for the given number of epochs.
