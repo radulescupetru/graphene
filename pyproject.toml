@@ -22,7 +22,7 @@ fallback_version = "0.1.0"
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ["src"]
+include = ["graphene"]
 exclude = ["data", "tests"]
 
 [tool.black]

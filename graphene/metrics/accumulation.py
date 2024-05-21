@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import mlx.core as mx
 
-from src.metrics.metric import Metric
+from graphene.metrics.metric import Metric
 
 
 class Accumulation(Metric):

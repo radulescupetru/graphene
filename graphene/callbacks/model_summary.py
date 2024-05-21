@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.callbacks.callback import Callback
+from graphene.callbacks import Callback
 
 
 class ModelSummary(Callback):

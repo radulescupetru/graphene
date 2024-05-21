@@ -8,9 +8,8 @@ from mlx import nn
 
 from examples.cifar_datamodule import Cifar10DataModule
 from examples.resnet import resnet20
-from src.core.trainer import Trainer
-from src.core.trainmodule import TrainModule
-from src.metrics import Accuracy
+from graphene import Trainer, TrainModule
+from graphene.metrics import Accuracy
 
 
 class CifarTrainModule(TrainModule):

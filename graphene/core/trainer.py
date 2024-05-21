@@ -5,14 +5,13 @@ from contextlib import contextmanager
 import mlx.core as mx
 from mlx import nn
 
-from src.callbacks.model_summary import ModelSummary
-from src.callbacks.progress_bar import ProgressCallback
-from src.callbacks.wandb import WandbCallback
-from src.core.datamodule import DataModule
-from src.core.trainmodule import TrainModule
-from src.loops.loop import LoopType
-from src.loops.train_loop import TrainLoop
-from src.loops.validation_loop import ValidationLoop
+from graphene import DataModule, TrainModule
+from graphene.callbacks.model_summary import ModelSummary
+from graphene.callbacks.progress_bar import ProgressCallback
+from graphene.callbacks.wandb import WandbCallback
+from graphene.loops.loop import LoopType
+from graphene.loops.train_loop import TrainLoop
+from graphene.loops.validation_loop import ValidationLoop
 
 
 class Trainer:

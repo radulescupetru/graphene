@@ -5,8 +5,7 @@ from abc import ABC, abstractmethod
 
 from mlx import nn
 
-from src.core.datamodule import DataModule
-from src.core.trainmodule import TrainModule
+from graphene import DataModule, TrainModule
 
 
 class LoopType(enum.Enum):

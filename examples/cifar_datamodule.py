@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 from mlx.data.datasets.cifar import load_cifar10
 
-from src.core.datamodule import DataModule
+from graphene import DataModule
 
 
 class Cifar10DataModule(DataModule):

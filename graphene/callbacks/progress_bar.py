@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from tqdm import tqdm
 
-from src.loops.loop import LoopType
+from graphene.loops.loop import LoopType
 
 
 class ProgressCallback:

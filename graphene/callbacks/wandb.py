@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import wandb
 
-from src.callbacks.callback import Callback
-from src.loops.loop import LoopType
+from graphene.callbacks import Callback
+from graphene.loops.loop import LoopType
 
 
 class WandbCallback(Callback):

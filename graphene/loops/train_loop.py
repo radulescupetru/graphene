@@ -4,11 +4,9 @@ import mlx.core as mx
 import numpy as np
 from mlx import nn
 
-from src.core.datamodule import DataModule
-from src.core.trainmodule import TrainModule
-from src.loops.loop import Loop
-from src.metrics import Accumulation
-from src.metrics.metric import Metric
+from graphene import DataModule, TrainModule
+from graphene.loops.loop import Loop
+from graphene.metrics import Accumulation, Metric
 
 
 class TrainLoop(Loop):
