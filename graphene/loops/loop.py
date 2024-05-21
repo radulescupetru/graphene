@@ -5,8 +5,6 @@ from abc import ABC, abstractmethod
 
 from mlx import nn
 
-from graphene import DataModule, TrainModule
-
 
 class LoopType(enum.Enum):
     TRAINING = enum.auto()
@@ -16,7 +14,7 @@ class LoopType(enum.Enum):
 class Loop(ABC):
     """Base class for loops."""
 
-    def __init__(self, trainer, train_module: TrainModule, data_module: DataModule) -> None:
+    def __init__(self, trainer, train_module, data_module) -> None:
         super().__init__()
         self.train_module = train_module
         self.data_module = data_module

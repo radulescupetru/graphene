@@ -5,7 +5,6 @@ from contextlib import contextmanager
 import mlx.core as mx
 from mlx import nn
 
-from graphene import DataModule, TrainModule
 from graphene.callbacks.model_summary import ModelSummary
 from graphene.callbacks.progress_bar import ProgressCallback
 from graphene.callbacks.wandb import WandbCallback
@@ -17,8 +16,8 @@ from graphene.loops.validation_loop import ValidationLoop
 class Trainer:
     def __init__(
         self,
-        train_module: TrainModule,
-        data_module: DataModule,
+        train_module,
+        data_module,
         max_epochs: int,
         run_validation_every_n_epochs: int = 1,
         run_sanity_validation: bool = False,

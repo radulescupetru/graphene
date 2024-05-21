@@ -3,14 +3,13 @@ from __future__ import annotations
 import mlx.core as mx
 import numpy as np
 
-from graphene import DataModule, TrainModule
 from graphene.loops.loop import Loop
 from graphene.metrics import Accumulation
 from graphene.metrics.metric import Metric
 
 
 class ValidationLoop(Loop):
-    def __init__(self, trainer, train_module: TrainModule, data_module: DataModule) -> None:
+    def __init__(self, trainer, train_module, data_module) -> None:
         super().__init__(trainer, train_module, data_module)
         self.metrics: dict[str, Metric] = {"loss": Accumulation()}
 
