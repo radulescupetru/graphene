@@ -19,9 +19,9 @@ class CifarTrainModule(TrainModule):
         self.model = resnet20()
 
     def configure_optimizers(self):
-        warmup = optim.linear_schedule(0, 1e-1, steps=30 * 190)
-        cosine = optim.cosine_decay(1e-1, 200)
-        lr_schedule = optim.join_schedules([warmup, cosine], [30 * 190])
+        warmup = optim.linear_schedule(0, 1e-1, steps=4 * 190)
+        cosine = optim.cosine_decay(1e-1, 26 * 190)
+        lr_schedule = optim.join_schedules([warmup, cosine], [4 * 190])
         optimizer = optim.Adam(learning_rate=lr_schedule)
         return optimizer
 
@@ -38,7 +38,7 @@ class CifarTrainModule(TrainModule):
         y_hat = self.forward(x)
         loss = nn.losses.cross_entropy(y_hat, y, reduction="mean")
         self.train_accuracy(y_hat, y)
-        self.log("train_accuracy", self.train_accuracy)
+        self.log("accuracy", self.train_accuracy)
         return loss
 
     def validation_step(self, batch: dict, batch_idx):
@@ -46,7 +46,7 @@ class CifarTrainModule(TrainModule):
         y_hat = self.forward(x)
         loss = nn.losses.cross_entropy(y_hat, y, reduction="mean")
         self.validation_accuracy(y_hat, y)
-        self.log("validation_accuracy", self.validation_accuracy)
+        self.log("accuracy", self.validation_accuracy)
         return loss
 
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         data_module=datamodule,
         max_epochs=30,
         run_validation_every_n_epochs=1,
-        limit_validation_batches=10,
-        limit_train_batches=10,
+        # limit_validation_batches=10,
+        # limit_train_batches=10,/
     )
     trainer.fit()

@@ -20,16 +20,16 @@ class Callback:
     def training_step(self, trainer):
         pass
 
-    def on_train_batch_end(self, trainer):
+    def on_train_batch_end(self, trainer, *args, **kwargs):
         pass
 
     def on_validation_epoch_start(self, trainer):
         pass
 
-    def on_validation_step_start(self, trainer):
+    def on_validation_batch_start(self, trainer):
         pass
 
-    def on_validation_step_end(self, trainer):
+    def on_validation_batch_end(self, trainer, *args, **kwargs):
         pass
 
     def on_validation_epoch_end(self, trainer):

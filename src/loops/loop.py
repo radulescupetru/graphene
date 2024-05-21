@@ -100,7 +100,7 @@ class Loop(ABC):
 
             # Trigger end of batch events and methods
             batch_events["end_method"](loss)
-            self.trainer._trigger_event(batch_events["end_event"])
+            self.trainer._trigger_event(batch_events["end_event"], batch_idx=batch_idx)
 
         # Trigger end of epoch events and methods
         epoch_events["end_method"]()

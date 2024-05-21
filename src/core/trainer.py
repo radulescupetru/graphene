@@ -7,6 +7,7 @@ from mlx import nn
 
 from src.callbacks.model_summary import ModelSummary
 from src.callbacks.progress_bar import ProgressCallback
+from src.callbacks.wandb import WandbCallback
 from src.core.datamodule import DataModule
 from src.core.trainmodule import TrainModule
 from src.loops.loop import LoopType
@@ -21,7 +22,7 @@ class Trainer:
         data_module: DataModule,
         max_epochs: int,
         run_validation_every_n_epochs: int = 1,
-        run_sanity_validation: bool = True,
+        run_sanity_validation: bool = False,
         limit_train_batches: int | None = None,
         limit_validation_batches: int | None = None,
         seed: int = 42,
@@ -42,10 +43,7 @@ class Trainer:
         self.optimizer = self.train_module.configure_optimizers()
 
         # Initialize callbacks
-        self.callbacks = [
-            ModelSummary(),
-            ProgressCallback(),
-        ]
+        self.callbacks = [ModelSummary(), ProgressCallback(), WandbCallback()]
 
         # Initialize loops
         self.loops = {

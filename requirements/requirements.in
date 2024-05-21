@@ -2,3 +2,4 @@ mlx
 mlx-data
 setuptools
 tqdm
+wandb

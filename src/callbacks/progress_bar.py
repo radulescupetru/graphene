@@ -24,7 +24,7 @@ class ProgressCallback:
             leave=False,
         )
 
-    def on_train_batch_end(self, trainer):
+    def on_train_batch_end(self, trainer, *args, **kwargs):
         self.train_progress_bar.update(1)
         self._log_metrics(
             trainer.current_epoch, trainer.loops[LoopType.TRAINING].metrics, self.train_progress_bar, on_step=True
@@ -45,7 +45,7 @@ class ProgressCallback:
             leave=False,
         )
 
-    def on_validation_batch_end(self, trainer):
+    def on_validation_batch_end(self, trainer, *args, **kwargs):
         self.validation_progress_bar.update(1)
         self._log_metrics(
             trainer.current_epoch,
